@@ -9,14 +9,14 @@ var debug = require('debug')('app:config');
 
 // Don't want to use .env files in production:
 if (!process.env.NODE_ENV || process.env.NODE_ENV == 'development') {
-    console.log(require('dotenv').config({ silent: true }));
+  console.log(require('dotenv').config({ silent: true }));
 }
 
-console.log(process.env.NODE_ENV);
+console.log('NODE_ENV: ', process.env.NODE_ENV);
 
 const mongolab = {
-    name: 'MongoLab',
-    connection: process.env.MONGO_CONNECTION
+  name: 'MongoLab',
+  connection: process.env.MONGO_CONNECTION
 };
 
 function configure(configuration) {

@@ -5,13 +5,13 @@
 // |_| |_| |_|\__,_|_|_| |_|
 //
 
+var config = require('../config/config');
 var express = require('express');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
 
-var index = require('./routes/index');
-var users = require('./routes/users');
+var routes = require('./routes');
 
 var app = express();
 
@@ -22,6 +22,8 @@ var app = express();
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+// TODO: setup auth w/ jwt and attempt to grab bearer token and populate req.token
 
 // mount routing middleware:
 app.use('/', routes);
