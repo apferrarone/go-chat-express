@@ -19,7 +19,7 @@ const routes = require('./routes');
 const app = express();
 
 // connect to the db asap:
-mongoose.connect(config.db.connection, { useNewUrlParser: true });
+mongoose.connect(config.db.connection, { useCreateIndex: true, useNewUrlParser: true });
 mongoose.set('debug', process.env.DEBUG); // for logging
 
 // ensure connection was successful:
