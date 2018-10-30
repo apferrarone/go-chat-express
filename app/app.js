@@ -10,15 +10,24 @@ var express = require('express');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
+var mongoose = require('mongoose');
 
 var routes = require('./routes');
 
 var app = express();
 
-// TODO: connect to the db asap:
+// connect to the db asap:
+mongoose.connect(config.db.connection, { useNewUrlParser: true });
+mongoose.set('debug', process.env.DEBUG); // for logging
 
-// uncomment after placing your favicon in /public
-// app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+// ensure connection was successful:
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function() {
+  console.log('CONNECTED to the DB!!!');
+});
+
+// standard middleware:
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
