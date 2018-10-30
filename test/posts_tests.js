@@ -20,9 +20,15 @@ const testPost = {
     longitude: 120.1452
 };
 
-const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YWIzMmQwOTRiNTRiNDI3ZDQ2MmU1ZWIiLCJpYXQiOjE1MjE3NjQyMTR9.p0s0VcXRqgQD4GGRXkceic-XZRv7UWuACRVZeLiMp9E";
+const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzMwZWY4MzZjMjE5M2FjNWY3ZDMiLCJpYXQiOjE1NDA4NjY4MzF9.GAvURlivow0C2LNYpdzEhcSkLjJdUyH7NvOEH44K8fM";
 
-const differentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YWIzNWU4NDA4ZjZmZTI5YmM2NjAxMmMiLCJpYXQiOjE1MjE3NzA2OTR9.AUCWPh3GNOK22ERnFBfqtccR063unT40vnkuETQre_w";
+const differentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzM3MjU0MTFiOTE5NDhhZGQ1MGYiLCJpYXQiOjE1NDA4NjY5MzJ9.wu_JN8R0KZbZNxF6fahrHJC5AEWbkRTlNdiTT3QgM54";
+
+before(function (done) {
+    app.on("DBConnected", function(){
+        done();
+    });
+});
 
 xdescribe('Post Tests', function() {
 
@@ -36,6 +42,7 @@ xdescribe('Post Tests', function() {
               .then(ensureValidPostResponse)
               .then(function(res) {
                   testPost.postID = res.body._id;
+                  console.log("testPostIDNoComments ", testPost.postID);
               });
         });
     });

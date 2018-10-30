@@ -59,6 +59,7 @@ function createComment(req, res) {
       .ne('is_deleted', true)
       .exec()
       .then(function(post) {
+        console.log("\nIs there a post?", post);
           if (post) {
               // now create the comment:
               const comment = new Comment({
@@ -83,6 +84,7 @@ function createComment(req, res) {
               const err = new Error('Invalid parent post');
               err.safeMessage = 'The parent post doesn\'t exist';
               err.code = 400;
+              console.log("\nwe are throwing the error", err);
               throw err;
           }
       })
@@ -91,6 +93,7 @@ function createComment(req, res) {
           res.status(201).json(comment);
       })
       .catch(function(err) {
+        console.log("\n\nHERE\n\n", err);
           console.error(err);
           const code = err.code || 400;
           res.status(400).json({

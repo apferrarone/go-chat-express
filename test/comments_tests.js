@@ -12,18 +12,25 @@ const app = require('../app/app');
 const supertest = require('supertest');
 const expect = require('chai').expect;
 
-const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YWIzMmQwOTRiNTRiNDI3ZDQ2MmU1ZWIiLCJpYXQiOjE1MjE3NjQyMTR9.p0s0VcXRqgQD4GGRXkceic-XZRv7UWuACRVZeLiMp9E";
+const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzMwZWY4MzZjMjE5M2FjNWY3ZDMiLCJpYXQiOjE1NDA4NjY4MzF9.GAvURlivow0C2LNYpdzEhcSkLjJdUyH7NvOEH44K8fM";
 
-const testPostID = '5ab5bbe76c3c120c0ab8b1e2';
-const noCommentsPostID = '5ab5c7038049810c6185af27';
+const testPostID = '5bd7c40f9eea50195bd82966';
+const noCommentsPostID = '5bd7c4441183f81963e3a19f';
 
 const testComment = {
     content: 'This is a test comment about a post'
 };
 
-describe('Comments Tests', function() {
+before(function (done) {
+    app.on("DBConnected", function(){
+        done();
+    });
+});
+
+xdescribe('Comments Tests', function() {
 
     describe('Create Comment', function() {
+
         it('should return a 201 comment response', function() {
             return supertest(app)
               .post(`/api/v1/posts/${testPostID}/comments`)

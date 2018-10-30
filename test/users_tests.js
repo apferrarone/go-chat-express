@@ -14,9 +14,15 @@ const expect = require('chai').expect;
 
 // needs to be a unique user
 var testUser = {
-    username: "TestUser492330",
+    username: "TestUser3",
     password: "qqqqqq"
 };
+
+before(function (done) {
+    app.on("DBConnected", function(){
+        done();
+    });
+});
 
 xdescribe('User Tests', function() {
 
@@ -36,6 +42,7 @@ xdescribe('User Tests', function() {
               .then(function(res) {
                   testUser.userID = res.body.user._id;
                   testUser.token = res.body.token;
+                  console.log("test token", testUser.token);
               });
         });
 
