@@ -5,32 +5,44 @@
 // |_| |_| |_|\__,_|_|_| |_|
 //
 
-var config = require('../config/config');
-var express = require('express');
-var path = require('path');
-var logger = require('morgan');
-var bodyParser = require('body-parser');
+const express = require('express');
+const path = require('path');
+const logger = require('morgan');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const tokenGrabber = require('express-bearer-token');
+const debug = require('debug')('app:main');
 
-var routes = require('./routes');
+const config = require('../config/config');
+const routes = require('./routes');
 
-var app = express();
+const app = express();
 
-// TODO: connect to the db asap:
+// connect to the db asap:
+mongoose.connect(config.db.connection, { useCreateIndex: true, useNewUrlParser: true });
+mongoose.set('debug', process.env.DEBUG); // for logging
 
-// uncomment after placing your favicon in /public
-// app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+// ensure connection was successful:
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function() {
+  console.log('CONNECTED to the DB!!!');
+});
+
+// standard middleware:
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // TODO: setup auth w/ jwt and attempt to grab bearer token and populate req.token
+app.use(tokenGrabber());
 
 // mount routing middleware:
 app.use('/', routes);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
-  var err = new Error('Not Found');
+  const err = new Error('Not Found');
   err.status = 404;
   next(err);
 });

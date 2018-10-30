@@ -8,8 +8,13 @@
 const express = require('express');
 const debug = require('debug')('app:routing');
 
+const UsersController = require('./controllers/users_controller');
+const PostsController = require('./controllers/posts_controller');
+const CommentsController = require('./controllers/comments_controller');
+
 const router = express.Router();
 const defaultRouter = express.Router();
+const apiRouter = express.Router();
 
 // / just returns plain message:
 defaultRouter.get('/', function(req, res) {
@@ -22,10 +27,38 @@ defaultRouter.get('/heartbeat', function(req, res) {
 });
 
 /////////////////////
+//	Users
+/////////////////////
+
+apiRouter.get('/users/:id', UsersController.checkUser, UsersController.findUser);
+apiRouter.post('/signup', UsersController.createUser);
+apiRouter.post('/login', UsersController.login);
+
+/////////////////////
+//  Posts
+/////////////////////
+
+apiRouter.get('/posts_by_location', UsersController.checkUser, PostsController.postsByLocation);
+apiRouter.post('/posts', UsersController.checkUser, PostsController.createPost);
+apiRouter.route('/post/:postID')
+  .get(UsersController.checkUser, PostsController.checkPostID, PostsController.findPost)
+  .delete(UsersController.checkUser, PostsController.checkPostID, PostsController.destroyPost);
+
+/////////////////////
+//	Comments
+/////////////////////
+
+apiRouter.route('/posts/:postID/comments')
+  .get(UsersController.checkUser, PostsController.checkPostID, CommentsController.commentsForPost)
+  .post(UsersController.checkUser, PostsController.checkPostID, CommentsController.createComment);
+apiRouter.delete('/posts/:postID/comments/:commentID', UsersController.checkUser, CommentsController.destroyComment);
+
+/////////////////////
 //	Exports
 /////////////////////
 
 /* Route consolidation */
 router.use(defaultRouter);
+router.use('/api/v1', apiRouter);
 
 module.exports = router;
