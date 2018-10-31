@@ -21,11 +21,11 @@ const testComment = {
     content: 'This is a test comment about a post'
 };
 
-before(function (done) {
-    app.on("DBConnected", function(){
-        done();
-    });
-});
+// before(function (done) {
+//     app.on("DBConnected", function(){
+//         done();
+//     });
+// });
 
 xdescribe('Comments Tests', function() {
 

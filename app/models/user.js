@@ -5,7 +5,7 @@
 //  \__,_|___/\___|_|
 //
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt-nodejs');
 const debug = require('debug')('app:models:user');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
@@ -27,6 +27,8 @@ const userSchema = new Schema({
     password: { type: String, required: true }
 }, { timestamps: true } ); // option to auto set createdAt & updatedAt Dates
 
+var progress = function() {};
+
 /**
 * @description Hash the plaintext password when it changes
 */
@@ -41,7 +43,7 @@ userSchema.pre('save', function(next) {
         if (err) return next(err);
 
         // hash password using new salt:
-        bcrypt.hash(user.password, salt, function(err, hash) {
+        bcrypt.hash(user.password, salt, progress, function(err, hash) {
             if (err) return next(err);
 
             // override the plaintext password w/ hashed one:

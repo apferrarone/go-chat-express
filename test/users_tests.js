@@ -18,13 +18,7 @@ var testUser = {
     password: "qqqqqq"
 };
 
-before(function (done) {
-    app.on("DBConnected", function(){
-        done();
-    });
-});
-
-xdescribe('User Tests', function() {
+describe('User Tests', function() {
 
     describe('Signup User', function() {
 
