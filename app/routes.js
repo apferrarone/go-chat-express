@@ -18,12 +18,12 @@ const apiRouter = express.Router();
 
 // / just returns plain message:
 defaultRouter.get('/', function(req, res) {
-    res.send('Let\'s do this');
+  res.send('Let\'s do this');
 });
 
 // heartbeat:
 defaultRouter.get('/heartbeat', function(req, res) {
-    res.send('OK'); // send defaults to 200
+  res.send('OK'); // send defaults to 200
 });
 
 /////////////////////

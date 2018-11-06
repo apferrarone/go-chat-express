@@ -19,6 +19,7 @@ const routes = require('./routes');
 const app = express();
 
 // connect to the db asap:
+mongoose.Promise = global.Promise;
 mongoose.connect(config.db.connection, { useCreateIndex: true, useNewUrlParser: true });
 mongoose.set('debug', process.env.DEBUG); // for logging
 
@@ -48,7 +49,19 @@ app.use(function(req, res, next) {
   next(err);
 });
 
-// error handler
+// dev error handler
+// will print stacktrace
+if (app.get('env') === 'development') {
+  app.use(function (err, req, res) {
+    res.status(err.status || 500);
+    res.render('error', {
+      message: err.message,
+      error: err
+    });
+  });
+}
+
+// prod error handler
 app.use(function(err, req, res, next) {
   console.log(`\n\n\n${err}\n\n\n`);
   res.status(err.status || 500);
