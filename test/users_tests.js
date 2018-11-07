@@ -14,7 +14,7 @@ const expect = require('chai').expect;
 
 // needs to be a unique user
 var testUser = {
-    username: "TestUser3",
+    username: "TestUser1",
     password: "qqqqqq"
 };
 
