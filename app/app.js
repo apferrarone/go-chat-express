@@ -36,7 +36,7 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// TODO: setup auth w/ jwt and attempt to grab bearer token and populate req.token
+// attempts to grab bearer token and populate req.token
 app.use(tokenGrabber());
 
 // mount routing middleware:

@@ -30,7 +30,7 @@ const userSchema = new Schema({
 
 /**
 * @description Hash the plaintext password when it changes,
-* Remember that we cannot use arrow fns here or methods b/c they don't bind this, they just,
+* Remember that we cannot use arrow fns here or w/ methods b/c they don't bind this, they just,
 * look at lexical scope which is global here. The scope is not class level.
 * Just like prototypes using arrow fns will be bad b/c the dot notation will not,
 * properly bind this b/c arrow fns only bind lexically and automatically.
@@ -38,10 +38,7 @@ const userSchema = new Schema({
 * to the db document (obj).
 */
 
-var noop = function() {};
-
 userSchema.pre('save', function(next) {
-
   // only hash password if it's value is different than current
   if (!this.isModified('password')) return next();
 
@@ -50,7 +47,7 @@ userSchema.pre('save', function(next) {
     if (err) return next(err);
 
     // hash password using new salt
-    bcrypt.hash(this.password, salt, noop, (err, hash) => {
+    bcrypt.hash(this.password, salt, null, (err, hash) => {
       if (err) return next(err);
       // override the plaintext password w/ hashed one:
       this.password = hash;

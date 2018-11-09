@@ -19,25 +19,26 @@ const _auth_secret = process.env.JWT_SECRET;
 /////////////////////
 
 function checkUser(req, res, next) {
-    // grab auth bearer token (populated by tokenGrabber middleware):
-    const token = req.token;
-    if (!token) {
-        debug('no bearer token');
-        return unauthorized(res); // guard no token
+  // grab auth bearer token (populated by tokenGrabber middleware):
+  const token = req.token;
+  if (!token) {
+    debug('no bearer token');
+    return unauthorized(res); // guard no token
+  }
+
+  // verify the token:
+  JWT.verify(token, _auth_secret, (err, payload) => {
+    // check for decoding error:
+    if (err) {
+      debug(`Error decoding token: ${err}`);
+      return unauthorized(res);
     }
 
-    // verify the token:
-    JWT.verify(token, _auth_secret, function(err, payload) {
-        // check for decoding error:
-        if (err) {
-            debug(`Error decoding token: ${err}`);
-            return unauthorized(res);
-        }
-
-        // success - set basic user(+ _id) payload as the user:
-        req.user = payload;
-        next();
-    });
+    // success - set basic user(+ _id) payload as the user
+    // payload is { _id: userID, iat: issuedAtDate }
+    req.user = payload;
+    next();
+  });
 }
 
 /////////////////////
@@ -219,12 +220,12 @@ function successfulLogin(res) {
 }
 
 function unauthorized(res) {
-    res.status(401).json({
-        error: {
-            code: 401,
-            message: 'Not authorized'
-        }
-    });
+  res.status(401).json({
+    error: {
+      code: 401,
+      message: 'Not authorized'
+    }
+  });
 }
 
 /////////////////////
