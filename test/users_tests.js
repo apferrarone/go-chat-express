@@ -13,7 +13,7 @@ const supertest = require('supertest');
 const expect = require('chai').expect;
 
 // needs to be a unique user
-var testUser = {
+const testUser = {
     username: "TestUser1",
     password: "qqqqqq"
 };

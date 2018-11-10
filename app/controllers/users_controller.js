@@ -46,20 +46,22 @@ function checkUser(req, res, next) {
 /////////////////////
 
 function login(req, res) {
-    const username = req.body.username && req.body.username.toLowerCase();
-    const password = req.body.password;
+  // is username is null(falsy) it will just reassign and short circuit never lowercasing it,
+  // if truthy aka non null it will be lowercased and returned
+  const username = req.body.username && req.body.username.toLowerCase();
+  const password = req.body.password;
 
-    // find a user by email and check the Password:
-    User.findOne({ username: username })
-      .exec()
-      .then(ensureUserExists)
-      .then(matchUserPassword(password))
-      .then(generateTokenForUser)
-      .then(successfulLogin(res))
-      .catch(function(err) {
-          console.error(err);
-          return unauthorized(res);
-      });
+  // find a user by email and check the Password:
+  User.findOne({ username: username })
+  .exec()                             // get a promise w/ user
+  .then(ensureUserExists)             // returns user
+  .then(matchUserPassword(password))  // returns user
+  .then(generateTokenForUser)         // returns user and token obj
+  .then(successfulLogin(res))         // sends the response w/ user and token
+  .catch((err) => {
+    debug(`Error logging in: ${err}`);
+    return unauthorized(res);
+  });
 }
 
 /////////////////////
@@ -70,59 +72,58 @@ function login(req, res) {
 * @description Creates user with POST body
 */
 function createUser(req, res) {
-    var username = req.body.username;
-    const password = req.body.password;
+  var username = req.body.username;
+  const password = req.body.password;
 
-    if (!(username && password)) {
-        return res.status(400).json({
-            error: {
-                code: 400,
-                message: 'Bad params'
-            }
-        });
-    }
-
-    // sanitize input:
-    username = username.trim();
-
-    // hold onto this for monitoring fraud:
-    const ip = req.clientIp;
-    debug(`IP: ${ip}`);
-    debug(`Creating user ${username} from ${ip}`);
-
-    const user = new User({
-        username: username,
-        password: password,
+  if (!(username && password)) {
+    debug('Bad signup params');
+    return res.status(400).json({
+      error: {
+        code: 400,
+        message: 'Bad params'
+      }
     });
+  }
 
-    // save the user:
-    user.save().then(function(user) {
-        // we have a user, but we need to authenticate the user:
-        const userAndToken = generateTokenForUser(user);
-        const token = userAndToken.token;
-        res.status(201).json({
-            user: user,
-            token: token
-        });
+  // sanitize input,
+  // could enforce min/max length for username/ password
+  username = username.trim();
+
+  // hold onto this for monitoring fraud:
+  const ip = req.clientIp;
+  debug(`IP: ${ip}`);
+  debug(`Creating user ${username} from ${ip}`);
+
+  const user = new User({
+    username: username,
+    password: password,
+  });
+
+  // save the user:
+  user.save()
+    .then((user) => {
+      // we have a user, but we need to authenticate the user:
+      const userAndToken = generateTokenForUser(user);
+      res.status(201).json(userAndToken);
     })
-    .catch(function(err) {
-        console.error(err);
-        // check for invalid uniqueness:
-        if (err.code === 11000) {
-            res.status(409).json({
-                error: {
-                    code: 409,
-                    message: "Username already taken"
-                }
-            });
-        } else { // other error ??
-            res.status(500).json({
-                error: {
-                    code: err.code || 27107,
-                    message: "Could not save the user"
-                }
-            });
-        }
+    .catch((err) => {
+      debug(`Error saving new user: ${err}`);
+      // check for invalid uniqueness:
+      if (err.code === 11000) { // mongodb unique key error
+        res.status(409).json({
+          error: {
+            code: 409,
+            message: "Username already taken"
+          }
+        });
+      } else { // other error ??
+        res.status(500).json({
+          error: {
+            code: err.code || 27107,
+            message: "Could not save the user"
+          }
+        });
+      }
     });
 }
 
@@ -130,39 +131,41 @@ function createUser(req, res) {
 * @description Finds user by ID
 */
 function findUser(req, res, next) {
-    const currentUserID = req.user && req.user._id;
-    const targetUserID = req.params.id;
+  const currentUserID = req.user && req.user._id;
+  const targetUserID = req.params.id;
+  debug(`current user ${currentUserID} looking at user ${targetUserID}`);
+  // This is ok for now, we could make sure the users are the same
 
-    if (!mongoose.Types.ObjectId.isValid(targetUserID)) {
-        return res.status(400).json({
-            error: {
-                code: 400,
-                message: 'Invalid userID'
-            }
-        });
-    }
+  if (!mongoose.Types.ObjectId.isValid(targetUserID)) {
+    return res.status(400).json({
+      error: {
+        code: 400,
+        message: 'Invalid userID'
+      }
+    });
+  }
 
-    // get the user by id, hide the password and logins
-    User.findById(targetUserID)
-      .select('-password')
-      .exec()
-      .then(function(user) {
-          if (user) {
-              res.json(user);
-          } else {
-              // that userID is bogus:
-              res.status(400).json({
-                  error: {
-                      code: 400,
-                      message: 'That user doesn\'t exist'
-                  }
-              });
-          }
-      })
-      .catch(function(err) {
-          console.error(err);
-          next(err);
+  // get the user by id, hide the password and logins
+  User.findById(targetUserID)
+  .select('-password') // hashed anyways but don't pass along in res
+  .exec()
+  .then((user) => {
+    if (user) {
+      res.json(user);
+    } else {
+      // that userID is bogus:
+      res.status(400).json({
+        error: {
+          code: 400,
+          message: 'That user doesn\'t exist'
+        }
       });
+    }
+  })
+  .catch((err) => {
+    debug(`Error fetching user: ${err}`);
+    next(err);
+  });
 }
 
 ////////////////
@@ -176,47 +179,40 @@ function findUser(req, res, next) {
 * @return {string} userAndToken.token - the jwt token
 */
 function generateTokenForUser(user) {
-    // create a token payload for th user
-    const payload = {
-        _id: user._id
-    };
-    // create the actual token:
-    const token = JWT.sign(payload, _auth_secret);
-    // return a user-and-token obj:
-    const userAndToken = {
-        user: user,
-        token: token
-    };
-    return userAndToken;
+  // create a token payload for th user
+  const payload = {
+    _id: user._id
+  };
+  // create the actual token:
+  const token = JWT.sign(payload, _auth_secret);
+  // return a user-and-token obj:
+  const userAndToken = {
+    user: user,
+    token: token
+  };
+
+  return userAndToken;
 }
 
 function ensureUserExists(user) {
-    if (!user) {
-        throw new Error('No user matched that login');
-    }
-    return user;
+  if (!user) throw new Error('No user matched that login');
+  return user;
 }
 
 function matchUserPassword(password) {
-    return function(user) {
-        return user.comparePassword(password)
-          .then(function(matched) {
-              if (matched) {
-                  return user;
-              } else {
-                  throw new Error('Password doesn\'t match.');
-              }
-          });
-    };
+  return (user) => {
+    return user.comparePassword(password)
+      .then((matched) => {
+        if (matched) return user;
+        else throw new Error('Password doesn\'t match.');
+      });
+  };
 }
 
 function successfulLogin(res) {
-    return function(userAndToken) {
-        res.json({
-            user: userAndToken.user,
-            token: userAndToken.token
-        });
-    };
+  return (userAndToken) => {
+    res.json(userAndToken);
+  };
 }
 
 function unauthorized(res) {

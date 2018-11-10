@@ -49,26 +49,13 @@ app.use(function(req, res, next) {
   next(err);
 });
 
-// dev error handler
-// will print stacktrace
-if (app.get('env') === 'development') {
-  app.use(function (err, req, res) {
-    res.status(err.status || 500);
-    res.render('error', {
-      message: err.message,
-      error: err
-    });
-  });
-}
-
-// prod error handler
-app.use(function(err, req, res, next) {
-  console.log(`\n\n\n${err}\n\n\n`);
+// error handler, no error for prod - no leaked stack trace?
+app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.json({
     error: {
-      // app.get('env') returns 'development' if NODE_ENV is undefined
-      message: req.app.get('env') === 'development' ? err.message: 'Not Found'
+      message: err.message,
+      error: req.app.get('env') === 'development' ? err : {}
     }
   });
 });
