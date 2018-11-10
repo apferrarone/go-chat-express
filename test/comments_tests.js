@@ -27,7 +27,7 @@ const testComment = {
 //     });
 // });
 
-xdescribe('Comments Tests', function() {
+describe('Comments Tests', function() {
 
     describe('Create Comment', function() {
 
