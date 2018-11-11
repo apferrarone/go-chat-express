@@ -10,27 +10,28 @@ const mongoose = require('mongoose');
 const debug = require('debug')('app:controller:posts');
 
 const Post = require('../models/post');
-const Comment = require('../models/comment');
 
-const EARTH_RADIUS = 3959.0; // miles
-const METERS_PER_MILE = 1609.34;
+const EARTH_RADIUS = 3959.0; // miles, Meters/mile = 1609.34
+const AUTOEXPAND_MIN_POSTS = 10;
+const AUTOEXPAND_INTERVAL_RADIUS = [25, 100];
 
 /////////////////////
 //  Middleware
 /////////////////////
 
 function checkPostID(req, res, next) {
-    const postID = req.params.postID;
-    if (!mongoose.Types.ObjectId.isValid(postID)) {
-        return res.status(400).json({
-            error: {
-                code: 400,
-                message: 'Invalid postID'
-            }
-        });
-    }
-    // postID is valid so continue:
-    next();
+  const postID = req.params.postID;
+  if (!mongoose.Types.ObjectId.isValid(postID)) {
+    // could call next w/ an error and catch in app.js...
+    return res.status(400).json({
+      error: {
+        code: 400,
+        message: 'Invalid postID'
+      }
+    });
+  }
+  // postID is valid so continue:
+  next();
 }
 
 /////////////////////
@@ -41,67 +42,81 @@ function checkPostID(req, res, next) {
 
 /**
 * @description Create a new post
+* Should come after checkPostID in middleware stack
 */
 function createPost(req, res) {
-    const user = req.user;
-    const content = req.body.content;
-    const latitude = req.body.latitude || req.body.lat;
-    const longitude = req.body.longitude || req.body.long;
+  const user = req.user;
+  const latitude = req.body.latitude || req.body.lat;
+  const longitude = req.body.longitude || req.body.long;
+  var content = req.body.content;
 
-    debug(`User ${user._id} creating post at ${latitude}, ${longitude}`);
+  // sanitize content, validation/ param errors handled below
+  content = content.trim();
+  debug(`User ${user._id} creating post at ${latitude}, ${longitude}`);
 
-    const post = new Post({
-        user: user._id,
-        content: content,
-        latitude: latitude,
-        longitude: longitude
+  const post = new Post({
+    user: user._id,
+    content: content,
+    latitude: latitude,
+    longitude: longitude
+  });
+
+  post.save()
+    .then((post) => {
+      res.status(201).json(post);
+    })
+    .catch((err) => {
+      debug(`Error saving new post: ${err}`);
+      if (err.name === 'ValidationError') {
+        res.status(400).json({
+          error: {
+            code: 400,
+            message: 'Bad params - request did not pass validation'
+          }
+        });
+      } else { // other error ??
+        res.status(500).json({
+          error: {
+            code: err.code || 500,
+            message: err.message || 'Could not save the post'
+          }
+        });
+      }
     });
-
-    post.save()
-      .then(function(post) {
-          res.status(201).json(post);
-      })
-      .catch(function(err) {
-          res.status(400).json({
-              error: {
-                  code: err.code || 400,
-                  message: err.message
-              }
-          });
-      });
 }
 
 /** READ **/
 
 /**
 * @description Finds a post by post ID
+* Should come after checkPostID in middleware stack
 */
-function findPost(req, res) {
-    const postID = req.params.postID;
+function findPost(req, res, next) {
+  const postID = req.params.postID;
 
-    // find the post by id:
-    Post.findById(postID)
-      .exec()
-      .then(function(post) {
-          if (post) {
-              res.json(post);
-          } else {
-              // no post found, throw error to be caught below:
-              const err = new Error('Invalid post id');
-              err.safeMessage = 'That post doesn\'t exist';
-              err.code = 400;
-              throw err;
-          }
-      })
-      .catch(function(err) {
-          console.error(err);
-          res.status(400).json({
-              error: {
-                  code: err.code || 400,
-                  message: err.safeMessage || 'Error when looking for post'
-              }
-          });
+  // find the post by id:
+  Post.findById(postID)
+    .exec()
+    .then((post) => {
+      if (post) {
+        res.json(post);
+      } else {
+        // no post found, throw error to be caught below:
+        const err = new Error('Invalid postID');
+        err.message = 'That post doesn\'t exist';
+        err.code = 400;
+        next(err);
+      }
+    })
+    .catch((err) => {
+      debug(`Error fetching post: ${err}`);
+      res.status(500).json({
+        error: {
+          code: 500,
+          message: 'Error when looking for post'
+        }
       });
+    });
 }
 
 /** DELETE **/
@@ -110,37 +125,39 @@ function findPost(req, res) {
 * @description Marks a post as deleted (soft delete)
 */
 function destroyPost(req, res) {
-    const thisUser = req.user._id;
-    const postID = req.params.postID;
+  const thisUser = req.user._id;
+  const postID = req.params.postID;
 
-    debug(`user ${thisUser} deleting post ${postID}`);
+  debug(`user ${thisUser} deleting post ${postID}`);
 
-    Post.findOneAndUpdate(postID)
-      .where('user', thisUser)
-      .set({ is_deleted: true })
-      .exec()
-      .then((post) => {
-        if (post) { // could be null nothing found (user is wrong, etc)
-          res.json({ success: true });
-        } else { // post may not belong to thisUser, funny business here...
-          debug(`User ${thisUser} might not own post ${postID}`);
-          res.status(401).json({
-              error: {
-                  code: 401,
-                  message: 'Something fishy is going on.'
-              }
-          });
+  Post.updateOne({ _id: postID })
+    .where('user', thisUser)
+    .set({ is_deleted: true })
+    .exec()
+    .then((rawResult) => {
+      // for query.prototype.update, rawResult is writeOpResult
+      if (rawResult.nModified > 0) {
+        res.json({ success: true });
+      } else {
+        // post may not belong to thisUser, funny business here...
+        debug(`User ${thisUser} might not own post ${postID}`);
+        res.status(401).json({
+          error: {
+            code: 401,
+            message: 'Something fishy is going on.'
+          }
+        });
+      }
+    })
+    .catch((err) => {
+      debug(`error deleting post: ${err}`);
+      res.status(500).json({
+        error: {
+          code: err.code || 500,
+          message: 'Couldn\'t delete the post'
         }
-      })
-      .catch(function(err){
-          console.error(err);
-          res.status(500).json({
-              error: {
-                  code: err.code || 500,
-                  message: 'Couldn\'t delete the post'
-              }
-          });
       });
+    });
 }
 
 /** SEARCH **/
@@ -149,58 +166,75 @@ function destroyPost(req, res) {
 * @description Searches for local posts by lat/long
 */
 function postsByLocation(req, res) {
-    const user = req.user;
-    const lat = req.query.latitude || req.query.lat;
-    const long = req.query.longitude || req.query.long;
-    const radiusMiles = parseFloat(req.query.within) || 5.0;
+  const user = req.user;
+  const lat = req.query.latitude || req.query.lat;
+  const long = req.query.longitude || req.query.long;
+  const radiusMiles = parseFloat(req.query.within) || 5.0;
 
-    queryPostsAtLocation(user, lat, long, radiusMiles)
-    .then(function(posts) {
-        res.json({
-            posts: posts
-        });
+  queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles)
+    .then((postsResults) => {
+      res.json(postsResults);
     })
-    .catch(function(err) {
-        console.log(err);
-        res.status(500).json({
-            error: {
-                code: error.code || 500,
-                message: error.message
-            }
-        });
+    .catch((err) => {
+      debug(`Error fetching posts by location: ${err}`);
+      res.status(500).json({
+        error: {
+          code: err.code || 500,
+          message: err.message || 'Couldn\'t find posts by location'
+        }
+      });
     });
 }
 
 /**
 * @description Utility for querying posts and autoexpanding radius !
 */
-function queryPostsAtLocation(user, lat, long, radiusMiles) {
-    var radiusRadians = radiusMiles / EARTH_RADIUS;
-    // use x/y coordinates for Mongo;
-    var xyCoordinate = [long, lat];
-    // construct a geoJSON point:
-    var point = {
-        type: 'Point',
-        center: xyCoordinate,
-        maxDistance: radiusRadians,
-        spherical: true
-    };
+function queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExpandAttempt) {
+  var radiusRadians = radiusMiles / EARTH_RADIUS;
+  // use x/y coordinates for Mongo;
+  var xyCoordinate = [long, lat];
+  // construct a geoJSON point:
+  var point = {
+    type: 'Point',
+    center: xyCoordinate,
+    maxDistance: radiusRadians,
+    spherical: true
+  };
 
-    debug(`${user._id} Looking for posts ${radiusMiles} miles and ${radiusRadians} radians from ${xyCoordinate}`);
+  debug(`${user._id} Looking for posts ${radiusMiles} miles and ${radiusRadians} radians from ${xyCoordinate}`);
 
-    // look for public posts w/in X miles, not deleted, by most recent:
-    var queryPromise = Post.find()
-      .ne('is_deleted', true)
-      .near('point', point)
-      .sort('-createdAt')
-      .limit(200)
-      .exec()
-      .then(function(posts) {
-          debug(`${posts.length} posts found.`);
-          return posts;
-      });
+  // look for public posts w/in X miles, not deleted, by most recent:
+  var queryPromise = Post.find()
+    .ne('is_deleted', true)
+    .near('point', point)
+    .sort('-createdAt')
+    .limit(200)
+    .exec()
+    .then((posts) => {
+      debug(`${posts.length} posts found.`);
+      // *auto-expand* if there are less than X posts, try again w/ a larger radius
+      autoExpandAttempt = autoExpandAttempt || 0; // jesus take the wheel haha
+      // if there are less than X posts, try a larger radius
+      if (posts.length < AUTOEXPAND_MIN_POSTS) {
+        // ensure we don't recurse forever
+        if (autoExpandAttempt < AUTOEXPAND_INTERVAL_RADIUS.length) {
+          // set radius to be larger in hopes of finding more posts
+          radiusMiles = AUTOEXPAND_INTERVAL_RADIUS[autoExpandAttempt];
+          debug(`Not enough posts found, AUTOEXPANDING RADIUS to ${radiusMiles}. ATTEMPT ${autoExpandAttempt + 1}`);
+          // halt further scoped ops and recurse (in the promise chain), making sure to stop after 1 iteration.
+          return queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExpandAttempt + 1);
+        }
+      }
+      // pass along the results:
+      const postsResponse = {
+        posts: posts,
+        radius: radiusMiles
+      };
 
-      return queryPromise;
+      return postsResponse;
+    });
+
+  return queryPromise;
 }
 
 /////////////////////

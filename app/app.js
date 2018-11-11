@@ -58,10 +58,11 @@ app.use(function(req, res, next) {
 
 // error handler, no error for prod - no leaked stack trace?
 app.use(function (err, req, res, next) {
-  res.status(err.status || 500);
+  res.status(err.status || err.code || 500);
   res.json({
     error: {
-      message: err.message,
+      code: err.code || 500,
+      message: err.message || 'Server Error',
       error: req.app.get('env') === 'development' ? err : {}
     }
   });

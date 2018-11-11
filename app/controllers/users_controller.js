@@ -53,15 +53,15 @@ function login(req, res) {
 
   // find a user by email and check the Password:
   User.findOne({ username: username })
-  .exec()                             // get a promise w/ user
-  .then(ensureUserExists)             // returns user
-  .then(matchUserPassword(password))  // returns user
-  .then(generateTokenForUser)         // returns user and token obj
-  .then(successfulLogin(res))         // sends the response w/ user and token
-  .catch((err) => {
-    debug(`Error logging in: ${err}`);
-    return unauthorized(res);
-  });
+    .exec()                             // get a promise w/ user
+    .then(ensureUserExists)             // returns user
+    .then(matchUserPassword(password))  // returns user
+    .then(generateTokenForUser)         // returns user and token obj
+    .then(successfulLogin(res))         // sends the response w/ user and token
+    .catch((err) => {
+      debug(`Error logging in: ${err}`);
+      return unauthorized(res);
+    });
 }
 
 /////////////////////
@@ -75,18 +75,7 @@ function createUser(req, res) {
   var username = req.body.username;
   const password = req.body.password;
 
-  if (!(username && password)) {
-    debug('Bad signup params');
-    return res.status(400).json({
-      error: {
-        code: 400,
-        message: 'Bad params'
-      }
-    });
-  }
-
-  // sanitize input,
-  // could enforce min/max length for username/ password
+  // sanitize input, validation/ param errors handled below
   username = username.trim();
 
   // hold onto this for monitoring fraud:
@@ -113,14 +102,21 @@ function createUser(req, res) {
         res.status(409).json({
           error: {
             code: 409,
-            message: "Username already taken"
+            message: 'Username already taken'
+          }
+        });
+      } else if (err.name === 'ValidationError') {
+        res.status(400).json({
+          error: {
+            code: 400,
+            message: 'Bad params - request did not pass validation'
           }
         });
       } else { // other error ??
         res.status(500).json({
           error: {
             code: err.code || 27107,
-            message: "Could not save the user"
+            message: err.message || 'Could not save the user'
           }
         });
       }
@@ -147,25 +143,25 @@ function findUser(req, res, next) {
 
   // get the user by id, hide the password and logins
   User.findById(targetUserID)
-  .select('-password') // hashed anyways but don't pass along in res
-  .exec()
-  .then((user) => {
-    if (user) {
-      res.json(user);
-    } else {
-      // that userID is bogus:
-      res.status(400).json({
-        error: {
-          code: 400,
-          message: 'That user doesn\'t exist'
-        }
-      });
-    }
-  })
-  .catch((err) => {
-    debug(`Error fetching user: ${err}`);
-    next(err);
-  });
+    .select('-password') // hashed anyways but don't pass along in res
+    .exec()
+    .then((user) => {
+      if (user) {
+        res.json(user);
+      } else {
+        // that userID is bogus:
+        res.status(400).json({
+          error: {
+            code: 400,
+            message: 'That user doesn\'t exist'
+          }
+        });
+      }
+    })
+    .catch((err) => {
+      debug(`Error fetching user: ${err}`);
+      next(err);
+    });
 }
 
 ////////////////
@@ -197,7 +193,10 @@ function generateTokenForUser(user) {
 }
 
 function ensureUserExists(user) {
-  if (!user) throw new Error('No user matched that login');
+  if (!user) {
+    throw new Error('No user matched that login');
+  }
+
   return user;
 }
 
@@ -205,8 +204,11 @@ function matchUserPassword(password) {
   return (user) => {
     return user.comparePassword(password)
       .then((matched) => {
-        if (matched) return user;
-        else throw new Error('Password doesn\'t match.');
+        if (matched) {
+          return user;
+        } else {
+          throw new Error('Password doesn\'t match.');
+        }
       });
   };
 }

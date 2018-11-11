@@ -34,9 +34,11 @@ const testUser = {
   password: 'qqqqqq'
 };
 
-var lastToken;
+const invalidTestUser = {
+  username: 'invalid'
+};
 
-describe('User Tests', function () {
+describe.only('User Tests', function () {
 
   /**
    * SIGNUP TESTS
@@ -67,6 +69,16 @@ describe('User Tests', function () {
           checkForErrorResponseAndMessage(res, 'Username already taken');
         });
     });
+
+    it('should fail if params are invalid', function () {
+      return supertest(app)
+        .post('/api/v1/signup')
+        .send(invalidTestUser)
+        .expect(400)
+        .then((res) => {
+          checkForErrorResponseAndMessage(res, 'Bad params - request did not pass validation');
+        });
+    });
   });
 
   /**
@@ -90,7 +102,7 @@ describe('User Tests', function () {
         });
     });
 
-    it ('should fail if password is incorrect', function () {
+    it('should fail if password is incorrect', function () {
       return request
         .send({ username: testUser.username, password: 'wrongpassword' })
         .expect(401)
@@ -170,7 +182,6 @@ function ensureUserAndTokenResponse(res) {
   expect(res.body.user).to.not.equal(null);
   expect(res.body).to.have.property('token');
   expect(res.body.token).to.not.equal(null);
-  lastToken = res.body.token;
   return res;
 }
 
