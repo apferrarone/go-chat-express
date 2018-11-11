@@ -34,7 +34,13 @@ const testUser = {
   password: 'qqqqqq'
 };
 
-describe.only('User Tests', function () {
+var lastToken;
+
+describe('User Tests', function () {
+
+  /**
+   * SIGNUP TESTS
+   */
   describe('Signup User', function () {
     // signup route:
     var request;
@@ -51,7 +57,6 @@ describe.only('User Tests', function () {
         .then((res) => {
           testUser.userID = res.body.user._id;
           testUser.token = res.body.token;
-          console.log('test user: ', testUser);
         });
     });
 
@@ -62,8 +67,98 @@ describe.only('User Tests', function () {
           checkForErrorResponseAndMessage(res, 'Username already taken');
         });
     });
-
   });
+
+  /**
+   * LOGIN TESTS
+   */
+  describe('Login User', function () {
+    // login route:
+    var request;
+    beforeEach(function () {
+      request = supertest(app)
+        .post('/api/v1/login')
+        .send(testUser);
+    });
+
+    it('should fail if user doesn\'t exist', function () {
+      return request
+        .send({ username: 'nonexistentusername', password: 'qqqqqq' })
+        .expect(401)
+        .then((res) => {
+          checkForErrorResponseAndMessage(res, 'Not authorized');
+        });
+    });
+
+    it ('should fail if password is incorrect', function () {
+      return request
+        .send({ username: testUser.username, password: 'wrongpassword' })
+        .expect(401)
+        .then((res) => {
+          checkForErrorResponseAndMessage(res, 'Not authorized');
+        });
+    });
+
+    it('should return a 200 userAndToken response for valid user', function () {
+      return request
+        .send(testUser)
+        .expect(200)
+        .then(ensureUserAndTokenResponse);
+    });
+  });
+
+  /**
+   * FETCH USER TESTS
+   */
+  describe('Fetch User', function () {
+    // read user route:
+    var request;
+    beforeEach(function () {
+      request = supertest(app)
+        .get(`/api/v1/users/${testUser.userID}`);
+    });
+
+    it('should fail if no valid auth token', function () {
+      return request
+        .expect(401)
+        .then((res) => {
+          checkForErrorResponseAndMessage(res, 'Not authorized');
+        });
+    });
+
+    it('should return a 200 User response if user exists', function () {
+      return request
+        .set({ Authorization: `Bearer ${testUser.token}` })
+        .expect(200)
+        .then((res) => {
+          expect(res.body).to.have.property('_id');
+          expect(res.body._id).to.not.equal(null);
+          expect(res.body).to.have.property('username');
+          expect(res.body.username).to.not.equal(null);             expect(res.body).to.not.have.property('password');
+        });
+    });
+
+    it('should fail if user doesn\'t exist', function () {
+      return supertest(app) // Don't use request from above here
+        .get('/api/v1/users/53cb6b9b4f4ddef1ad47f943')
+        .set({ Authorization: `Bearer ${testUser.token}` })
+        .expect(400)
+        .then((res) => {
+          checkForErrorResponseAndMessage(res, 'That user doesn\'t exist');
+        });
+    });
+
+    it('should fail if userID is invalid', function () {
+      return supertest(app) // Don't use request from above here
+        .get('/api/v1/users/bogusID')
+        .set({ Authorization: `Bearer ${testUser.token}` })
+        .expect(400)
+        .then((res) => {
+          checkForErrorResponseAndMessage(res, 'Invalid userID');
+        });
+    });
+  });
+
 });
 
 ////////////////
@@ -75,6 +170,7 @@ function ensureUserAndTokenResponse(res) {
   expect(res.body.user).to.not.equal(null);
   expect(res.body).to.have.property('token');
   expect(res.body.token).to.not.equal(null);
+  lastToken = res.body.token;
   return res;
 }
 
@@ -86,129 +182,3 @@ function checkForErrorResponseAndMessage(res, message) {
   expect(res.body.error).to.have.property('message');
   expect(res.body.error.message).to.equal(message);
 }
-
-
-
-
-//
-//
-//
-// describe('User Tests', function() {
-//
-//     describe('Signup User', function() {
-//
-//         var request;
-//         beforeEach(function() {
-//             request = supertest(app)
-//               .post('/api/v1/signup')
-//               .send(testUser);
-//         });
-//
-//         it('should return a 201 userAndToken response', function() {
-//             return request
-//               .expect(201)
-//               .then(ensureUserAndTokenResponse)
-//               .then(function(res) {
-//                   testUser.userID = res.body.user._id;
-//                   testUser.token = res.body.token;
-//                   console.log("test token", testUser.token);
-//               });
-//         });
-//
-//         it('should fail if username is taken', function() {
-//             return request
-//               .expect(409)
-//               .then(function(res) {
-//                   checkForErrorResponseAndMessage(res, 'Username already taken');
-//               });
-//         });
-//
-//     });
-//
-//     describe('Login User', function() {
-//
-//         var request;
-//         beforeEach(function() {
-//             request = supertest(app)
-//               .post('/api/v1/login');
-//         });
-//
-//         it('should fail if user doesn\'t exist', function() {
-//             return request
-//               .send({ username: 'nonexistentusername', password: 'qqqqqq' })
-//               .expect(401)
-//               .then(function(res) {
-//                   checkForErrorResponseAndMessage(res, 'Not authorized');
-//               });
-//         });
-//
-//         it ('should fail if password is incorrect', function() {
-//             return request
-//               .send({ username: testUser.username, password: 'wrongpassword' })
-//               .expect(401)
-//               .then(function(res) {
-//                   checkForErrorResponseAndMessage(res, 'Not authorized');
-//               });
-//         });
-//
-//         it('should return a 200 userAndToken response for valid user', function() {
-//             return request
-//               .send(testUser)
-//               .expect(200)
-//               .then(ensureUserAndTokenResponse);
-//         });
-//
-//     });
-//
-//     describe('Get User', function() {
-//
-//         var request;
-//         beforeEach(function() {
-//             request = supertest(app)
-//               .get(`/api/v1/users/${testUser.userID}`);
-//         });
-//
-//         it('should fail if no valid auth token', function() {
-//             return request
-//               .expect(401)
-//               .then(function(res) {
-//                   checkForErrorResponseAndMessage(res, 'Not authorized');
-//               });
-//         });
-//
-//         it('should return a 200 User response if user exists', function() {
-//             return request
-//               .set({ Authorization: `Bearer ${testUser.token}` })
-//               .expect(200)
-//               .then(function(res) {
-//                   expect(res.body).to.have.property('_id');
-//                   expect(res.body._id).to.not.equal(null);
-//                   expect(res.body).to.have.property('username');
-//                   expect(res.body.username).to.not.equal(null);             expect(res.body).to.not.have.property('password');
-//               });
-//         });
-//
-//         it('should fail if user doesn\'t exist', function() {
-//             return supertest(app)
-//               .get('/api/v1/users/53cb6b9b4f4ddef1ad47f943')
-//               .set({ Authorization: `Bearer ${testUser.token}` })
-//               .expect(400)
-//               .then(function(res) {
-//                   checkForErrorResponseAndMessage(res, 'That user doesn\'t exist');
-//               });
-//         });
-//
-//         it('should fail if userID is invalid', function() {
-//             return supertest(app)
-//               .get('/api/v1/users/bogusID')
-//               .set({ Authorization: `Bearer ${testUser.token}` })
-//               .expect(400)
-//               .then(function(res) {
-//                   checkForErrorResponseAndMessage(res, 'Invalid userID');
-//               });
-//         });
-//
-//     });
-//
-// });
-//

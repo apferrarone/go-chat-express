@@ -13,18 +13,18 @@ const supertest = require('supertest');
 const expect = require('chai').expect;
 
 const testPost = {
-    user: "5ab32d094b54b427d462e5eb",
-    content: "This is a test post!!",
-    // Tahoe city:
-    latitude: 39.1677,
-    longitude: 120.1452
+  user: "5ab32d094b54b427d462e5eb",
+  content: "This is a test post from nonexistent user!!",
+  // Tahoe city:
+  latitude: 39.1677,
+  longitude: 120.1452
 };
 
 const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzMwZWY4MzZjMjE5M2FjNWY3ZDMiLCJpYXQiOjE1NDA4NjY4MzF9.GAvURlivow0C2LNYpdzEhcSkLjJdUyH7NvOEH44K8fM";
 
 const differentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzM3MjU0MTFiOTE5NDhhZGQ1MGYiLCJpYXQiOjE1NDA4NjY5MzJ9.wu_JN8R0KZbZNxF6fahrHJC5AEWbkRTlNdiTT3QgM54";
 
-describe('Post Tests', function() {
+describe.only('Post Tests', function() {
 
     describe('Create Post', function() {
         it('should return a 201 post response', function() {
@@ -36,7 +36,6 @@ describe('Post Tests', function() {
               .then(ensureValidPostResponse)
               .then(function(res) {
                   testPost.postID = res.body._id;
-                  console.log("testPostIDNoComments ", testPost.postID);
               });
         });
     });
@@ -51,7 +50,6 @@ describe('Post Tests', function() {
               .then(function(res) {
                   expect(res.body).to.have.property('posts');
                   expect(res.body.posts).to.not.equal(null);
-                  console.log(`\n\n\n${res.body.posts.length}${' posts found'}\n\n\n`);
               });
         });
     });

@@ -115,28 +115,22 @@ function destroyPost(req, res) {
 
     debug(`user ${thisUser} deleting post ${postID}`);
 
-    Post.findById(postID)
+    Post.findOneAndUpdate(postID)
       .where('user', thisUser)
-      .update({ is_deleted: true })
+      .set({ is_deleted: true })
       .exec()
-      .then(function(modified) {
-
-          // for query.prototype.update, modified is writeOpResult
-          if (modified.nModified > 0) {
-              // success:
-              res.json({
-                  success: true
-              });
-
-          } else { // post may not belong to thisUser, funny business here...
-              debug(`User ${thisUser} might not own post ${postID}`);
-              res.status(401).json({
-                  error: {
-                      code: 401,
-                      message: 'Something fishy is going on.'
-                  }
-              });
-          }
+      .then((post) => {
+        if (post) { // could be null nothing found (user is wrong, etc)
+          res.json({ success: true });
+        } else { // post may not belong to thisUser, funny business here...
+          debug(`User ${thisUser} might not own post ${postID}`);
+          res.status(401).json({
+              error: {
+                  code: 401,
+                  message: 'Something fishy is going on.'
+              }
+          });
+        }
       })
       .catch(function(err){
           console.error(err);
@@ -167,7 +161,6 @@ function postsByLocation(req, res) {
         });
     })
     .catch(function(err) {
-        console.log(`\n\n${'HERE'}\n\n`);
         console.log(err);
         res.status(500).json({
             error: {

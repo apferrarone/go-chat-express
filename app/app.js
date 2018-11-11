@@ -23,6 +23,13 @@ mongoose.Promise = global.Promise;
 mongoose.connect(config.db.connection, { useCreateIndex: true, useNewUrlParser: true });
 mongoose.set('debug', process.env.DEBUG); // for logging
 
+// mongoose findOneAndUpdate and findByIdAndUpdate, remove, etc,
+// uses old mongodb findAndModify. This was before native driver had a
+// findOneAndUpdate, but now they are making the apis more consistent, so
+// findOneandModify which mongoose uses under the hood is deprecated, we want to
+// turn it off to use native driver's findOneAndUpdate, make sure to test all queries...
+mongoose.set('useFindAndModify', false);
+
 // ensure connection was successful:
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));

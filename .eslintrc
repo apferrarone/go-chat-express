@@ -21,7 +21,7 @@
     "linebreak-style":             [2, "unix"],
     "no-console":                  0,
     "no-trailing-spaces":          2,
-    "object-curly-spacing":        [2, "never"],
+    "object-curly-spacing":        [2, "always"],
     "one-var":                     [2, "never"],
     "prefer-template":             2,
     "quote-props":                 [2, "as-needed"],

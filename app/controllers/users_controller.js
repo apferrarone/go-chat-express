@@ -177,6 +177,8 @@ function findUser(req, res, next) {
 * @return {Object} userAndToken - the user and auto token
 * @return {Object} userAndToken.user - the user Object
 * @return {string} userAndToken.token - the jwt token
+*
+* The User object still contains the hashed password
 */
 function generateTokenForUser(user) {
   // create a token payload for th user
