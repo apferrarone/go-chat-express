@@ -33,9 +33,9 @@ mongoose.set('useFindAndModify', false);
 // ensure connection was successful:
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function() {
+db.once('open', function () {
   console.log('CONNECTED to the DB!!!');
-  app.emit("DBConnected");
+  app.emit('DBConnected');
 });
 
 // standard middleware:
@@ -50,7 +50,7 @@ app.use(tokenGrabber());
 app.use('/', routes);
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   const err = new Error('Not Found');
   err.status = 404;
   next(err);

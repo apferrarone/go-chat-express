@@ -14,25 +14,37 @@ const Schema = mongoose.Schema;
 * user is the id
 */
 const postSchema = new Schema({
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    content: { type: String, required: true, maxlength: 400 },
-    comment_count: { type: Number, default: 0, required: true },
-    latitude: { type: Number, required: true },
-    longitude: { type: Number, required: true},
-    point: {
-        type: [Number], // [<longitude>, <latitude>]
-        index: '2dsphere'
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true, maxlength: 400 },
+  comment_count: { type: Number, default: 0, required: true },
+  latitude: { type: Number, required: true },
+  longitude: { type: Number, required: true },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point']
     },
-    is_deleted: Boolean
+    coordinates: {
+      type: [Number] // [<longitude>, <latitude>]
+    }
+  },
+  is_deleted: Boolean
 }, { timestamps: true }); // adds `createdAt` and `updatedAt`
+
+postSchema.index({ location: '2dsphere' });
 
 /**
 * @description Easy setter for lat-long minded folks (b/c Mongo does it in reverse).
-* Mongo does geo indexing by long,lat which is really some international standard
+* Mongo does geo indexing by long,lat which is really some international standard.
+* MongoDB validates geoJSON fields and yells about empty arrays.
+* This ensures the doc gets 'fixed' properly before saving.
 */
-postSchema.pre('save', function(next) {
-    this.point = [this.longitude, this.latitude];
-    next();
+postSchema.pre('save', function (next) {
+  this.location = {
+    type: 'Point',
+    coordinates: [this.longitude, this.latitude]
+  };
+  next();
 });
 
 /////////////////////

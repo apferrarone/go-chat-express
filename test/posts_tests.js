@@ -20,7 +20,7 @@ const testPost = {
   content: 'This is a test post from nonexistent user!!',
   // Tahoe city:
   latitude: 39.1677,
-  longitude: 120.1452
+  longitude: -120.1452
 };
 
 const invalidTestPost = {
@@ -68,12 +68,24 @@ describe.only('Post Tests', function () {
     it('should return a 200 response with nearby posts', function () {
       return supertest(app)
         .get('/api/v1/posts_by_location')
-        .query({ lat: '39.1677', long: '120.1452', within: '30' })
+        .query({ lat: '39.1677', long: '-120.1452', within: '30' })
         .set({ Authorization: `Bearer ${testToken}` })
         .expect(200)
         .then((res) => {
           expect(res.body).to.have.property('posts');
           expect(res.body.posts).to.not.equal(null);
+        });
+    });
+
+    it('should fail b/c of bad params', function () {
+      return supertest(app)
+        .get('/api/v1/posts_by_location')
+        .query({ lat: '37.1', within: '300' }) // no long
+        .set({ Authorization: `Bearer ${testToken}` })
+        .expect(400)
+        .then((res) => {
+          expect(res.body).to.have.property('error');
+          expect(res.body.error).to.not.equal(null);
         });
     });
   });
@@ -124,6 +136,9 @@ describe.only('Post Tests', function () {
           checkForErrorResponseAndMessage(res, 'Something fishy is going on.');
         });
     });
+
+    // TODO: make sure you test for deleting one post when user has multiple posts,
+    // This has been tested manually but not w/ written tests
 
     it('should return a 200 success response', function () {
       return supertest(app)

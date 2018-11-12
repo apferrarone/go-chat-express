@@ -11,7 +11,7 @@ const debug = require('debug')('app:controller:posts');
 
 const Post = require('../models/post');
 
-const EARTH_RADIUS = 3959.0; // miles, Meters/mile = 1609.34
+const METERS_PER_MILE = 1609.34; // EARTH_RADIUS = 3959.0
 const AUTOEXPAND_MIN_POSTS = 10;
 const AUTOEXPAND_INTERVAL_RADIUS = [25, 100];
 
@@ -41,9 +41,9 @@ function checkPostID(req, res, next) {
 /** CREATE **/
 
 /**
-* @description Create a new post
-* Should come after checkPostID in middleware stack
-*/
+ * @description Create a new post
+ * Should come after checkPostID in middleware stack
+ */
 function createPost(req, res) {
   const user = req.user;
   const latitude = req.body.latitude || req.body.lat;
@@ -61,6 +61,7 @@ function createPost(req, res) {
     longitude: longitude
   });
 
+  // location field gets added during pre-save hook
   post.save()
     .then((post) => {
       res.status(201).json(post);
@@ -88,10 +89,10 @@ function createPost(req, res) {
 /** READ **/
 
 /**
-* @description Finds a post by post ID
-* Should come after checkPostID in middleware stack
-*/
-function findPost(req, res, next) {
+ * @description Finds a post by post ID
+ * Should come after checkPostID in middleware stack
+ */
+function findPost(req, res) {
   const postID = req.params.postID;
 
   // find the post by id:
@@ -105,15 +106,16 @@ function findPost(req, res, next) {
         const err = new Error('Invalid postID');
         err.message = 'That post doesn\'t exist';
         err.code = 400;
-        next(err);
+        throw err;
       }
     })
     .catch((err) => {
       debug(`Error fetching post: ${err}`);
-      res.status(500).json({
+      const status = err.code || 500;
+      res.status(status).json({
         error: {
-          code: 500,
-          message: 'Error when looking for post'
+          code: err.code || 500,
+          message: err.message || 'Error when looking for post'
         }
       });
     });
@@ -122,15 +124,17 @@ function findPost(req, res, next) {
 /** DELETE **/
 
 /**
-* @description Marks a post as deleted (soft delete)
-*/
+ * @description Marks a post as deleted (soft delete),
+ * Should come after checkPostID in middleware stack
+ */
 function destroyPost(req, res) {
   const thisUser = req.user._id;
   const postID = req.params.postID;
 
   debug(`user ${thisUser} deleting post ${postID}`);
 
-  Post.updateOne({ _id: postID })
+  Post.updateOne()
+    .where('_id', postID)
     .where('user', thisUser)
     .set({ is_deleted: true })
     .exec()
@@ -163,13 +167,24 @@ function destroyPost(req, res) {
 /** SEARCH **/
 
 /**
-* @description Searches for local posts by lat/long
-*/
+ * @description Searches for local posts by lat/long
+ */
 function postsByLocation(req, res) {
   const user = req.user;
   const lat = req.query.latitude || req.query.lat;
   const long = req.query.longitude || req.query.long;
   const radiusMiles = parseFloat(req.query.within) || 5.0;
+
+  console.log(user, lat, long, radiusMiles);
+
+  if (!user || !lat || !long || !radiusMiles) {
+    return res.status(400).json({
+      error: {
+        code: 400,
+        message: 'Bad params - request did not pass validation'
+      }
+    });
+  }
 
   queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles)
     .then((postsResults) => {
@@ -187,26 +202,34 @@ function postsByLocation(req, res) {
 }
 
 /**
-* @description Utility for querying posts and autoexpanding radius !
-*/
+ * @description Utility for querying posts and autoexpanding radius!
+ * This is private to this file and will assume that all params are valid
+ */
 function queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExpandAttempt) {
-  var radiusRadians = radiusMiles / EARTH_RADIUS;
-  // use x/y coordinates for Mongo;
-  var xyCoordinate = [long, lat];
-  // construct a geoJSON point:
-  var point = {
-    type: 'Point',
-    center: xyCoordinate,
-    maxDistance: radiusRadians,
+  if (!user || !lat || !long || !radiusMiles) {
+    throw new Error('Bad params to queryPostsAtLocationAutoexpanding');
+    return;
+  }
+
+  var radiusMeters = radiusMiles * METERS_PER_MILE;
+  var coordinates = [long, lat];
+
+  // specify a GeoJSON Point for center
+  var queryPoint = {
+    center: {
+      type: 'Point',
+      coordinates: coordinates // [long, lat]
+    },
+    maxDistance: radiusMeters,
     spherical: true
   };
 
-  debug(`${user._id} Looking for posts ${radiusMiles} miles and ${radiusRadians} radians from ${xyCoordinate}`);
+  debug(`${user._id} Looking for posts ${radiusMiles} miles and ${radiusMeters} meters from ${coordinates}`);
 
   // look for public posts w/in X miles, not deleted, by most recent:
   var queryPromise = Post.find()
     .ne('is_deleted', true)
-    .near('point', point)
+    .near('location', queryPoint)
     .sort('-createdAt')
     .limit(200)
     .exec()
@@ -214,21 +237,18 @@ function queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExp
       debug(`${posts.length} posts found.`);
       // *auto-expand* if there are less than X posts, try again w/ a larger radius
       autoExpandAttempt = autoExpandAttempt || 0; // jesus take the wheel haha
-      // if there are less than X posts, try a larger radius
-      if (posts.length < AUTOEXPAND_MIN_POSTS) {
-        // ensure we don't recurse forever
-        if (autoExpandAttempt < AUTOEXPAND_INTERVAL_RADIUS.length) {
-          // set radius to be larger in hopes of finding more posts
-          radiusMiles = AUTOEXPAND_INTERVAL_RADIUS[autoExpandAttempt];
-          debug(`Not enough posts found, AUTOEXPANDING RADIUS to ${radiusMiles}. ATTEMPT ${autoExpandAttempt + 1}`);
-          // halt further scoped ops and recurse (in the promise chain), making sure to stop after 1 iteration.
-          return queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExpandAttempt + 1);
-        }
+      // if there are less than X posts, try a larger radius but don't recurse forever:
+      if (posts.length < AUTOEXPAND_MIN_POSTS && autoExpandAttempt < AUTOEXPAND_INTERVAL_RADIUS.length) {
+        // set radius to be larger in hopes of finding more posts
+        radiusMiles = radiusMiles + AUTOEXPAND_INTERVAL_RADIUS[autoExpandAttempt];
+        debug(`Not enough posts found, AUTOEXPANDING RADIUS to ${radiusMiles}. ATTEMPT ${autoExpandAttempt + 1}`);
+        // halt further scoped ops and recurse (in the promise chain), making sure to stop after 1 iteration.
+        return queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExpandAttempt + 1);
       }
       // pass along the results:
       const postsResponse = {
         posts: posts,
-        radius: radiusMiles
+        radius_miles: radiusMiles
       };
 
       return postsResponse;

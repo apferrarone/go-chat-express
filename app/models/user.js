@@ -38,19 +38,26 @@ const userSchema = new Schema({
 * to the db document (obj).
 */
 
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
   // only hash password if it's value is different than current
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password')) {
+    return next();
+  }
 
   // generate a salt
   bcrypt.genSalt(SALT_WORK_FACTOR, (err, salt) => {
-    if (err) return next(err);
+    if (err) {
+      return next(err);
+    }
 
     // hash password using new salt
     bcrypt.hash(this.password, salt, null, (err, hash) => {
-      if (err) return next(err);
+      if (err) {
+        return next(err);
+      }
       // override the plaintext password w/ hashed one:
       this.password = hash;
+      debug('Successful User save');
       next();
     });
   });
@@ -60,11 +67,14 @@ userSchema.pre('save', function(next) {
 /**
 * @description Bcrypt password comparison helper
 */
-userSchema.methods.comparePassword = function(guess) {
+userSchema.methods.comparePassword = function (guess) {
   const comparisonPromise = new Promise((resolve, reject) => {
     bcrypt.compare(guess, this.password, (err, isMatch) => {
-      if (err) return reject(err);
-      else resolve(isMatch);
+      if (err) {
+        return reject(err);
+      } else {
+        resolve(isMatch);
+      }
     });
   });
 
