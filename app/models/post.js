@@ -32,6 +32,8 @@ const postSchema = new Schema({
 }, { timestamps: true }); // adds `createdAt` and `updatedAt`
 
 postSchema.index({ location: '2dsphere' });
+// so we will still have to do an in memory sort when we sort -createdAt,
+// but it's limited to 200 so not a big deal but could look into doing a compound index if possible??
 
 /**
 * @description Easy setter for lat-long minded folks (b/c Mongo does it in reverse).

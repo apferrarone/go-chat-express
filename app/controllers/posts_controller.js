@@ -114,7 +114,7 @@ function findPost(req, res) {
       const status = err.code || 500;
       res.status(status).json({
         error: {
-          code: err.code || 500,
+          code: status,
           message: err.message || 'Error when looking for post'
         }
       });
@@ -136,7 +136,7 @@ function destroyPost(req, res) {
   Post.updateOne()
     .where('_id', postID)
     .where('user', thisUser)
-    .set({ is_deleted: true })
+    .set({ is_deleted: true }) // a mongoose update turns into $set anyways
     .exec()
     .then((rawResult) => {
       // for query.prototype.update, rawResult is writeOpResult
@@ -155,7 +155,7 @@ function destroyPost(req, res) {
     })
     .catch((err) => {
       debug(`error deleting post: ${err}`);
-      res.status(500).json({
+      res.status(err.code || 500).json({
         error: {
           code: err.code || 500,
           message: 'Couldn\'t delete the post'
@@ -192,7 +192,7 @@ function postsByLocation(req, res) {
     })
     .catch((err) => {
       debug(`Error fetching posts by location: ${err}`);
-      res.status(500).json({
+      res.status(err.code || 500).json({
         error: {
           code: err.code || 500,
           message: err.message || 'Couldn\'t find posts by location'

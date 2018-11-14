@@ -14,12 +14,17 @@ const expect = require('chai').expect;
 
 const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzMwZWY4MzZjMjE5M2FjNWY3ZDMiLCJpYXQiOjE1NDA4NjY4MzF9.GAvURlivow0C2LNYpdzEhcSkLjJdUyH7NvOEH44K8fM";
 
-const testPostID = '5bd7c40f9eea50195bd82966';
-const noCommentsPostID = '5bd7c4441183f81963e3a19f';
+const differentToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YmQ3YzM3MjU0MTFiOTE5NDhhZGQ1MGYiLCJpYXQiOjE1NDA4NjY5MzJ9.wu_JN8R0KZbZNxF6fahrHJC5AEWbkRTlNdiTT3QgM54';
+
+const testPostID = '5be93c4f544d7e471df0e4ba';
+const noCommentsPostID = '5be938a9d3eaf846f43412d0';
 
 const testComment = {
-    content: 'This is a test comment about a post'
+    content: 'This is a test comment about a post',
+    _id: '5bebd82f182f126103e833c8'
 };
+
+
 
 // before(function (done) {
 //     app.on("DBConnected", function(){
@@ -27,7 +32,7 @@ const testComment = {
 //     });
 // });
 
-describe('Comments Tests', function() {
+describe.only('Comments Tests', function() {
 
     describe('Create Comment', function() {
 
@@ -37,10 +42,10 @@ describe('Comments Tests', function() {
               .set({ Authorization: `Bearer ${testToken}` })
               .send(testComment)
               .expect(201)
-              .then(function(res) {
+              .then((res) => {
                   expect(res.body).to.have.property('content');
                   expect(res.body.content).to.not.equal(null);
-              });
+              })
         });
     });
 
@@ -77,6 +82,26 @@ describe('Comments Tests', function() {
               });
         });
 
+    });
+
+    describe('Delete Comment', function () {
+      it('should fail if user is not the comment author', function () {
+        return supertest(app)
+          .delete(`/api/v1/posts/${testPostID}/comments/${testComment._id}`)
+          .set({ Authorization: `Bearer ${differentToken}` })
+          .expect(401)
+      });
+    });
+
+    it('should return a 200 success response', function () {
+      return supertest(app)
+      .delete(`/api/v1/posts/${testPostID}/comments/${testComment._id}`)
+      .set({ Authorization: `Bearer ${testToken}` })
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.have.property('success');
+        expect(res.body.success).to.not.equal(null);
+      })
     });
 
 });

@@ -38,7 +38,7 @@ const invalidTestUser = {
   username: 'invalid'
 };
 
-describe.only('User Tests', function () {
+describe('User Tests', function () {
 
   /**
    * SIGNUP TESTS

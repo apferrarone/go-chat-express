@@ -16,7 +16,8 @@ const debug = require('debug')('app:controller:posts');
 /** LIST **/
 
 /**
-* @description Fetches comments for a particular post
+* @description Fetches comments for a particular post,
+* Should come after a checkPostID middleware
 */
 function commentsForPost(req, res) {
   const postID = req.params.postID;
@@ -24,16 +25,17 @@ function commentsForPost(req, res) {
   // get all comments where parent_post is postID, not deleted:
   Comment.fromPostID(postID)
     .exec()
-    .then(function (comments) {
+    .then((comments) => {
       res.json({
         comments: comments
       });
     })
-    .catch(function (err) {
-      console.error(err);
-      res.status(400).json({
+    .catch((err) => {
+      debug(`Error fetching comments: ${err}`);
+      const status = err.code || 500;
+      res.status(status).json({
         error: {
-          code: 400,
+          code: status,
           message: 'Can\'t find the comments'
         }
       });
@@ -59,7 +61,6 @@ function createComment(req, res) {
     .ne('is_deleted', true)
     .exec()
     .then(function (post) {
-      console.log('\nIs there a post?', post);
       if (post) {
         // now create the comment:
         const comment = new Comment({
@@ -116,36 +117,36 @@ function destroyComment(req, res) {
   const commentID = req.params.commentID;
 
   // mark the comment as deleted and update it:
-  Comment.findById(commentID)
+  Comment.updateOne()
+    .where('_id', commentID)
     .where('user', thisUser)
-    .update({ is_deleted: true })
+    .set({ is_deleted: true })
     .exec()
-    .then(function (commentWriteOp) {
+    .then((commentWriteOp) => {
       // if the comment was successfully updated (to soft-delete)
       if (commentWriteOp.nModified > 0) {
         // decrement the parent post comment_count, return promise chain:
         return Post.findById(postID)
           .update({ $inc: { comment_count: -1 } })
           .exec();
-
       } else { // something funny is going on...
         // this probably isn't their post:
         const err = new Error('Comment delete went off the rails after fetch');
+        err.code = 401;
         throw err;
       }
-
     })
-    .then(function (post) {
+    .then((post) => {
       // success:
       res.json({
         success: true
       });
     })
-    .catch(function (err) {
+    .catch((err) => {
       console.error(err);
-      res.status(400).json({
+      res.status(err.code || 500).json({
         error: {
-          code: err.code || 400,
+          code: err.code || 500,
           message: 'couldn\'t complete comment deletion'
         }
       });
