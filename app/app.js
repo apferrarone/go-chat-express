@@ -6,7 +6,6 @@
 //
 
 const express = require('express');
-const path = require('path');
 const logger = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -58,6 +57,7 @@ app.use(function (req, res, next) {
 
 // error handler, no error for prod - no leaked stack trace?
 app.use(function (err, req, res, next) {
+  debug(`Final Error handler catching error: ${err}`);
   res.status(err.status || err.code || 500);
   res.json({
     error: {

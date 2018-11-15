@@ -8,7 +8,6 @@
 
 const mongoose = require('mongoose');
 const debug = require('debug')('app:controller:posts');
-
 const Post = require('../models/post');
 
 const METERS_PER_MILE = 1609.34; // EARTH_RADIUS = 3959.0
@@ -208,13 +207,13 @@ function postsByLocation(req, res) {
 function queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExpandAttempt) {
   if (!user || !lat || !long || !radiusMiles) {
     throw new Error('Bad params to queryPostsAtLocationAutoexpanding');
-    return;
   }
 
   var radiusMeters = radiusMiles * METERS_PER_MILE;
   var coordinates = [long, lat];
 
-  // specify a GeoJSON Point for center
+  // specify a GeoJSON Point for center,
+  // use meters not radians for GeoJSON (radians for legacy coordinate pairs)
   var queryPoint = {
     center: {
       type: 'Point',

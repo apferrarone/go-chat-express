@@ -48,7 +48,7 @@ apiRouter.route('/post/:postID')
 apiRouter.route('/posts/:postID/comments')
   .get(UsersController.checkUser, PostsController.checkPostID, CommentsController.commentsForPost)
   .post(UsersController.checkUser, PostsController.checkPostID, CommentsController.createComment);
-apiRouter.delete('/posts/:postID/comments/:commentID', UsersController.checkUser, CommentsController.destroyComment);
+apiRouter.delete('/posts/:postID/comments/:commentID', UsersController.checkUser, PostsController.checkPostID, CommentsController.destroyComment);
 
 /////////////////////
 //	Exports
