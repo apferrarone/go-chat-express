@@ -17,8 +17,17 @@ node_modules
 *.log
 *.gz
 
+# Coveralls
+coverage
+
+# Benchmarking
+benchmarks/graphs
+
 # # ENVIRONMENT # #
 .env
+
+*.pem
+*.secret
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*

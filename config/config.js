@@ -14,8 +14,8 @@ if (!process.env.NODE_ENV || process.env.NODE_ENV == 'development') {
 
 console.log('NODE_ENV: ', process.env.NODE_ENV);
 
-const mongolab = {
-  name: 'MongoLab',
+const mongo = {
+  name: 'Mongo',
   connection: process.env.MONGO_CONNECTION
 };
 
@@ -32,4 +32,4 @@ function configure(configuration) {
   return configuration;
 }
 
-exports.db = configure(mongolab);
+exports.db = configure(mongo);

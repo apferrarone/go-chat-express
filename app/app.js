@@ -6,7 +6,6 @@
 //
 
 const express = require('express');
-const path = require('path');
 const logger = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -19,15 +18,23 @@ const routes = require('./routes');
 const app = express();
 
 // connect to the db asap:
+mongoose.Promise = global.Promise;
 mongoose.connect(config.db.connection, { useCreateIndex: true, useNewUrlParser: true });
 mongoose.set('debug', process.env.DEBUG); // for logging
+
+// mongoose findOneAndUpdate and findByIdAndUpdate, remove, etc,
+// uses old mongodb findAndModify. This was before native driver had a
+// findOneAndUpdate, but now they are making the apis more consistent, so
+// findOneandModify which mongoose uses under the hood is deprecated, we want to
+// turn it off to use native driver's findOneAndUpdate, make sure to test all queries...
+mongoose.set('useFindAndModify', false);
 
 // ensure connection was successful:
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function() {
+db.once('open', function () {
   console.log('CONNECTED to the DB!!!');
-  app.emit("DBConnected");
+  app.emit('DBConnected');
 });
 
 // standard middleware:
@@ -35,27 +42,28 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// TODO: setup auth w/ jwt and attempt to grab bearer token and populate req.token
+// attempts to grab bearer token and populate req.token
 app.use(tokenGrabber());
 
 // mount routing middleware:
 app.use('/', routes);
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   const err = new Error('Not Found');
   err.status = 404;
   next(err);
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  console.log(`\n\n\n${err}\n\n\n`);
-  res.status(err.status || 500);
+// error handler, no error for prod - no leaked stack trace?
+app.use(function (err, req, res, next) {
+  debug(`Final Error handler catching error: ${err}`);
+  res.status(err.status || err.code || 500);
   res.json({
     error: {
-      // app.get('env') returns 'development' if NODE_ENV is undefined
-      message: req.app.get('env') === 'development' ? err.message: 'Not Found'
+      code: err.code || 500,
+      message: err.message || 'Server Error',
+      error: req.app.get('env') === 'development' ? err : {}
     }
   });
 });

@@ -6,15 +6,15 @@
 //
 
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema/**
+const Schema = mongoose.Schema;/**
 * @description The Comment schema
 * user and parent_post are just the ids
 */
 const commentSchema = new Schema({
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    content: { type: String, required: true, maxlength: 300 },
-    parent_post: { type: Schema.Types.ObjectId, ref: 'Post', required: true, index: true },
-    is_deleted: Boolean
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true, maxlength: 300 },
+  parent_post: { type: Schema.Types.ObjectId, ref: 'Post', required: true, index: true },
+  is_deleted: Boolean
 }, { timestamps: true }); // adds `createdAt` and `updatedAt`
 
 // create model using schema:
@@ -26,11 +26,11 @@ const Comment = mongoose.model('Comment', commentSchema);
 
 // get all comments where parent_post is postID, not deleted:
 function fromPostID(postID) {
-    return Comment.find()
-      .where('parent_post', postID)
-      .ne('is_deleted', true)
-      .sort('createdAt')
-      .limit(300);
+  return Comment.find()
+    .where('parent_post', postID)
+    .ne('is_deleted', true)
+    .sort('createdAt')
+    .limit(300);
 }
 
 /////////////////////
