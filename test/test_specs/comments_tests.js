@@ -90,9 +90,28 @@ module.exports = function (app, user) {
     });
 
     describe('Delete Comment', function () {
+      // create a new comment to delete before the delete comment tests,
+      // the first one should fail and then the next one will delte it:
+      let comment = {
+        content: 'This is a test comment about the post',
+      };
+
+      before(function (done) {
+        supertest(app)
+          .post(`/api/v1/posts/${testPostID}/comments`)
+          .set({ Authorization: user.token })
+          .send(comment)
+          .expect(201)
+          .then((res) => {
+            expect(res.body).to.have.property('_id');
+            comment._id = res.body._id;
+            done();
+          });
+      });
+
       it('should fail if user is not the comment author', function () {
         return supertest(app)
-          .delete(`/api/v1/posts/${testPostID}/comments/${testCommentID}`)
+          .delete(`/api/v1/posts/${testPostID}/comments/${comment._id}`)
           .set({ Authorization: differentToken })
           .expect(401);
       });
@@ -100,7 +119,7 @@ module.exports = function (app, user) {
       // TODO: need a before each here
       it('should return a 200 success response', function () {
         return supertest(app)
-          .delete(`/api/v1/posts/${testPostID}/comments/${testCommentID}`)
+          .delete(`/api/v1/posts/${testPostID}/comments/${comment._id}`)
           .set({ Authorization: user.token })
           .expect(200)
           .then((res) => {

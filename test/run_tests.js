@@ -38,7 +38,4 @@ app.on('DBConnected', () => {
       // start the mocha tests:
       run();
     })
-    .catch((err) => {
-      throw(err);
-    });
 });

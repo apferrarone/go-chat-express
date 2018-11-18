@@ -11,10 +11,10 @@ const app = require('../app/app');
 
 /**
  * @description Gets a new unauthenticated user.
- * Username should be random.
+ * Username should be unique.
  */
 module.exports.getNewUser = function () {
-  let randomInt = Math.floor(Math.random() * 100000);
+  let randomInt = Math.floor(Math.random() * 1000);
   return {
     username: `TestUser${randomInt}`,
     password: 'qqqqqq'
