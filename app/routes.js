@@ -23,6 +23,23 @@ defaultRouter.get('/heartbeat', function (req, res) {
   res.send('OK'); // send defaults to 200
 });
 
+/* Redirect https all */
+router.all('*', function (req, res, next) {
+  // check X-Forwarded-Proto since we will be sitting behind a load balancer,
+  // that will route to us over http on port 80, need to know how client connected to lb,
+  // also this will preevent us from an infinite loop of redirection.
+  if (process.env.REDIRECT_HTTPS && (!req.secure) && (req.get('X-Forwarded-Proto') !== 'https')) {
+    if (req.method === 'GET') {
+      let https = `https://${req.headers.host}${req.originalUrl}`;
+      return res.redirect(301, https);
+    } else {
+      return res.status(403).send('Please use HTTPS when submitting data');
+    }
+  } else {
+    next();
+  }
+});
+
 /////////////////////
 //	Users
 /////////////////////
