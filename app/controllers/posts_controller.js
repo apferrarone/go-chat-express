@@ -213,8 +213,9 @@ function queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExp
   var coordinates = [long, lat];
 
   // specify a GeoJSON Point for center,
+  // this is not just a point but a query object for $near operator
   // use meters not radians for GeoJSON (radians for legacy coordinate pairs)
-  var queryPoint = {
+  var queryPointOp = {
     center: {
       type: 'Point',
       coordinates: coordinates // [long, lat]
@@ -228,7 +229,7 @@ function queryPostsAtLocationAutoexpanding(user, lat, long, radiusMiles, autoExp
   // look for public posts w/in X miles, not deleted, by most recent:
   var queryPromise = Post.find()
     .ne('is_deleted', true)
-    .near('location', queryPoint)
+    .near('location', queryPointOp)
     .sort('-createdAt')
     .limit(200)
     .exec()

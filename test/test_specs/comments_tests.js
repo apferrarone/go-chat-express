@@ -15,6 +15,7 @@ const testUtils = require('../utils');
 // for eslint:
 /* global it, describe, before */
 
+// should create these before these tests...
 var differentToken;
 const testCommentID = '5bebd82f182f126103e833c8';     // parent = Squaw
 const testPostID = '5be93c4f544d7e471df0e4ba';        // Squaw Valley
